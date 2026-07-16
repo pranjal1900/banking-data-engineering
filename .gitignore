@@ -1,0 +1,85 @@
+# =================================================================
+# Banking Data Engineering Platform — .gitignore
+# =================================================================
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+
+# ---- Virtual Environments ----
+venv/
+env/
+.env
+.venv/
+ENV/
+
+# ---- Secrets ----
+.env
+*.pem
+*.key
+secrets/
+credentials/
+
+# ---- Generated Data (large datasets) ----
+data/raw/*.csv
+data/raw/*.json
+data/processed/
+data/curated/
+data/rejected/
+# Keep sample data
+!data/sample/
+
+# ---- Logs ----
+logs/
+*.log
+airflow/logs/
+
+# ---- Spark ----
+spark-warehouse/
+derby.log
+metastore_db/
+
+# ---- Parquet ----
+*.parquet
+*.snappy.parquet
+
+# ---- IDE ----
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+*.ipynb
+
+# ---- Testing ----
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ---- Airflow ----
+airflow/airflow.db
+airflow/airflow.cfg
+airflow/webserver_config.py
+airflow/standalone_admin_password.txt
+
+# ---- Docker ----
+docker/postgres/data/
+
+# ---- Temporary ----
+*.tmp
+*.temp
+tmp/
