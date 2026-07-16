@@ -1,0 +1,198 @@
+# =================================================================
+# Banking Data Engineering Platform — Main Configuration
+# =================================================================
+# All values here can be overridden by environment variables.
+# Sensitive values (passwords, keys) MUST come from .env.
+# =================================================================
+
+project:
+  name: "Banking Transaction Data Engineering & Fraud Analytics Platform"
+  version: "1.0.0"
+  environment: "development"   # development | staging | production
+
+# ---- Storage ----
+storage:
+  mode: "local"               # local | s3
+  local_root: "./data"
+  s3_bucket: "${S3_BUCKET}"
+  s3_prefix: "bank-data"
+  
+  # Data Lake paths (relative to local_root or s3://bucket/prefix/)
+  paths:
+    raw: "raw"
+    processed: "processed"
+    curated: "curated"
+    rejected: "rejected"
+    sample: "sample"
+
+# ---- Database ----
+database:
+  host: "${DATABASE_HOST}"
+  port: "${DATABASE_PORT}"
+  name: "${DATABASE_NAME}"
+  user: "${DATABASE_USER}"
+  password: "${DATABASE_PASSWORD}"
+  pool_size: 5
+  max_overflow: 10
+  schemas:
+    staging: "staging"
+    warehouse: "warehouse"
+    analytics: "analytics"
+    quality: "quality"
+
+# ---- Data Generation ----
+data_generation:
+  mode: "dev"                 # dev | large
+  bad_data_percentage: 0.05   # 5% bad records injected
+
+  dev:
+    customers: 10000
+    accounts: 20000
+    transactions: 100000
+    merchants: 500
+    branches: 100
+    start_date: "2024-01-01"
+    end_date: "2024-12-31"
+
+  large:
+    customers: 100000
+    accounts: 150000
+    transactions: 5000000
+    merchants: 2000
+    branches: 500
+    start_date: "2023-01-01"
+    end_date: "2024-12-31"
+
+  batch_size: 50000           # Records per write batch
+
+# ---- PySpark ----
+spark:
+  master: "local[*]"
+  app_name: "BankingDataPlatform"
+  driver_memory: "2g"
+  executor_memory: "2g"
+  shuffle_partitions: 8       # Reduce from 200 for dev; increase for large
+  parquet_compression: "snappy"
+  enable_hive_support: false
+
+# ---- Fraud Detection Thresholds ----
+fraud:
+  velocity:
+    window_minutes: 10
+    transaction_threshold: 5
+  
+  impossible_location:
+    window_minutes: 30
+    # Approximate: if distance > this km, flag as suspicious
+    min_suspicious_distance_km: 500
+  
+  large_transaction:
+    multiplier: 10            # Flag if amount > N * customer_avg
+    min_history_days: 30      # Require at least 30 days history
+  
+  failed_then_success:
+    failed_count_threshold: 3
+    window_minutes: 60
+  
+  unusual_frequency:
+    daily_multiplier: 3
+    baseline_days: 30         # Compare against 30-day rolling average
+  
+  # Risk scoring weights
+  risk_scores:
+    HIGH_VELOCITY: 40
+    IMPOSSIBLE_LOCATION: 80
+    LARGE_TRANSACTION: 60
+    FAILED_THEN_SUCCESS: 50
+    UNUSUAL_FREQUENCY: 30
+
+# ---- Incremental Processing ----
+incremental:
+  watermark_column: "ingestion_timestamp"
+  watermark_table: "quality.pipeline_watermarks"
+  late_arriving_days: 2       # Accept records up to 2 days late
+  dedup_key: "transaction_id" # Column used for deduplication
+
+# ---- Data Quality ----
+data_quality:
+  # Fields that must not be null
+  required_fields:
+    transactions:
+      - "transaction_id"
+      - "account_id"
+      - "amount"
+      - "timestamp"
+      - "transaction_type"
+      - "status"
+    customers:
+      - "customer_id"
+      - "name"
+      - "age"
+    accounts:
+      - "account_id"
+      - "customer_id"
+      - "balance"
+  
+  # Allowed values for categorical fields
+  allowed_values:
+    transaction_type:
+      - "UPI"
+      - "CARD"
+      - "ATM"
+      - "NEFT"
+      - "IMPS"
+      - "RTGS"
+      - "CASH_DEPOSIT"
+      - "CASH_WITHDRAWAL"
+    
+    transaction_status:
+      - "SUCCESS"
+      - "FAILED"
+      - "PENDING"
+    
+    channel:
+      - "Mobile"
+      - "Internet Banking"
+      - "ATM"
+      - "Branch"
+      - "POS"
+    
+    account_status:
+      - "ACTIVE"
+      - "BLOCKED"
+      - "CLOSED"
+    
+    customer_segment:
+      - "Regular"
+      - "Premium"
+      - "High Net Worth"
+      - "Student"
+      - "Senior"
+  
+  # Range checks
+  ranges:
+    transaction_amount:
+      min: 1
+      max: 10000000
+    customer_age:
+      min: 18
+      max: 100
+    account_balance:
+      min: 0
+
+# ---- Pipeline ----
+pipeline:
+  name: "banking_etl_pipeline"
+  retries: 3
+  retry_delay_seconds: 30
+  schedule: "0 2 * * *"      # Run at 2 AM daily
+  log_level: "INFO"
+
+# ---- Airflow ----
+airflow:
+  dag_id: "banking_etl_pipeline"
+  schedule_interval: "@daily"
+  catchup: false
+  max_active_runs: 1
+  default_retries: 2
+  default_retry_delay_minutes: 5
